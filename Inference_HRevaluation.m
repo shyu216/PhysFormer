@@ -1,7 +1,7 @@
 clear
 clc
 
-load my_infer_log\my_infer_log.mat %Inference_Physformer_TDC07_sharp2_hid96_head4_layer12_VIPL.mat 
+load my_infer_log2\my_infer_log2.mat %Inference_Physformer_TDC07_sharp2_hid96_head4_layer12_VIPL.mat 
 
 GT_list = importdata('VIPL_fold1_test1.txt');
 
@@ -61,6 +61,36 @@ HR_PSD = [HR_PSD; HR2];
 
 [HR_PSD; HR2]
     
-
-
 [HR_GT; GT_HR]
+
+
+
+% 可视化 rPPG 信号
+figure;
+subplot(2,1,1);
+plot(signal, 'b'); hold on;
+plot(signal_filtered, 'r');
+legend('Raw rPPG', 'Filtered rPPG');
+title('rPPG Signal (Raw & Filtered)');
+xlabel('Frame');
+ylabel('Amplitude');
+
+% 可视化 PSD
+[Pg_all, f_all] = pwelch(signal_filtered,[],[],2^13,framerate);
+subplot(2,1,2);
+plot(f_all, Pg_all);
+xlim([0 5]);
+title('Power Spectral Density of rPPG');
+xlabel('Frequency (Hz)');
+ylabel('PSD');
+hold on;
+[~, idx_max] = max(Pg_all(f_all>0.7 & f_all<4));
+f_range = f_all(f_all>0.7 & f_all<4);
+if ~isempty(f_range)
+    hr_pred = f_range(idx_max) * 60;
+    xline(hr_pred/60, 'r--', ['Pred HR: ' num2str(hr_pred, '%.1f') ' bpm']);
+end
+
+% 打印预测心率
+disp(['HR_PSD (3段均值): ' num2str(HR2, '%.2f') ' bpm']);
+% disp(['GT_HR: ' num2str(GT_HR, '%.2f') ' bpm']);
