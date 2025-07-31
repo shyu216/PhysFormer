@@ -1,10 +1,28 @@
 clear
 clc
 
-load my_infer_log\my_infer_log.mat %
-% load Inference_Physformer_TDC07_sharp2_hid96_head4_layer12_VIPL\Inference_Physformer_TDC07_sharp2_hid96_head4_layer12_VIPL.mat 
 
-% GT_list = importdata('VIPL_fold1_test1.txt');
+my_log = "my_infer_log4";
+my_list = { ...
+    '20250319_112130', ...
+    '20250320_150946', ...
+    '20250320_151150', ...
+    '20250729_145011', ...
+    '20250729_145848', ...
+    '20250729_145919', ...
+    '20250730_095548', ...
+    'Inference_Physformer_TDC07_sharp2_hid96_head4_layer12_VIPL', ...
+    'my_infer_log', ...
+    'my_infer_log2', ...
+    'my_infer_log3', ...
+    'my_infer_log4' ...
+};
+my_log = my_list{7};
+
+load (my_log + "/" + my_log + ".mat") 
+
+gt_path = my_log + "/gt.txt";
+GT_list = importdata(gt_path);
 
 total_samples = length(outputs_rPPG_concat);
 
@@ -14,9 +32,8 @@ HR_PSD = [];
 
 signal =  double(outputs_rPPG_concat);
 
-% framerate = GT_list.data(1,2);
+framerate = GT_list.data(1,2);
 % GT_HR = GT_list.data(1,3);
-framerate = 30;
 
 disp(framerate)
 disp(length(signal))
@@ -96,3 +113,41 @@ end
 % 打印预测心率
 disp(['HR_PSD (3段均值): ' num2str(HR2, '%.2f') ' bpm']);
 % disp(['GT_HR: ' num2str(GT_HR, '%.2f') ' bpm']);
+
+signal_length = length(signal_filtered);
+seg_len = floor(signal_length/3);
+
+figure;
+for seg = 1:3
+    if seg == 1
+        idx = 1:seg_len;
+    elseif seg == 2
+        idx = seg_len+1:2*seg_len;
+    else
+        idx = 2*seg_len+1:signal_length;
+    end
+    % 可视化 rPPG 信号
+    subplot(3,2,2*seg-1);
+    plot(signal(idx), 'b'); hold on;
+    plot(signal_filtered(idx), 'r');
+    legend('Raw rPPG', 'Filtered rPPG');
+    title(['Segment ' num2str(seg) ' rPPG']);
+    xlabel('Frame');
+    ylabel('Amplitude');
+
+    % 可视化 PSD
+    [Pg_seg, f_seg] = pwelch(signal_filtered(idx),[],[],2^13,framerate);
+    subplot(3,2,2*seg);
+    plot(f_seg, Pg_seg);
+    xlim([0 5]);
+    title(['Segment ' num2str(seg) ' PSD']);
+    xlabel('Frequency (Hz)');
+    ylabel('PSD');
+    hold on;
+    [~, idx_max] = max(Pg_seg(f_seg>0.7 & f_seg<4));
+    f_range = f_seg(f_seg>0.7 & f_seg<4);
+    if ~isempty(f_range)
+        hr_pred = f_range(idx_max) * 60;
+        xline(hr_pred/60, 'r--', ['Pred HR: ' num2str(hr_pred, '%.1f') ' bpm']);
+    end
+end

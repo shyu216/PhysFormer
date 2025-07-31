@@ -22,6 +22,8 @@ import copy
 import pdb
 import scipy.io as sio
 import time
+import shutil
+
 
 from TorchLossComputer import TorchLossComputer
  
@@ -71,6 +73,10 @@ def train_test():
     my_root = args.input_data
     my_test = args.input_data + '/gt.txt'
 
+    # copy gt file to log folder
+    if not os.path.exists(args.log + '/gt.txt'):
+        shutil.copy(my_test, args.log + '/gt.txt')
+
 
     dict_list = []
     dict_list.append('Physformer_VIPL_fold1.pkl')
@@ -111,6 +117,14 @@ def train_test():
                 start_time = time.time()
 
                 rPPG, Score1, Score2, Score3 = model(inputs[:,clip,:,:,:,:], gra_sharp)
+
+                # check if is cpu or cuda
+                print('rPPG device:', rPPG.device)
+                print('Score1 device:', Score1.device)
+                print('Model device:', next(model.parameters()).device)
+
+
+                print('rPPG shape:', rPPG.shape, 'Score1 shape:', Score1.shape, 'Score2 shape:', Score2.shape, 'Score3 shape:', Score3.shape)
                 
                 end_time = time.time()
                 print('clip:', clip, 'time:', end_time - start_time)
