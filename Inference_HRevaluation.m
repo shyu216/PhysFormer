@@ -1,7 +1,7 @@
 clear
 clc
 
-load Inference_Physformer_TDC07_sharp2_hid96_head4_layer12_VIPL.mat 
+load my_infer_log\my_infer_log.mat %Inference_Physformer_TDC07_sharp2_hid96_head4_layer12_VIPL.mat 
 
 GT_list = importdata('VIPL_fold1_test1.txt');
 
@@ -46,21 +46,21 @@ idxG = Pg == max(Pg(Frange));
 HR2_3 = f(idxG)*60;
 HR2 = (HR2_1+HR2_2+HR2_3)/3;
 
-HR_peaks = [HR_peaks; HR1];
+% HR_peaks = [HR_peaks; HR1];
 HR_PSD = [HR_PSD; HR2];
-HR_GT = [HR_GT; GT_HR];
+% HR_GT = [HR_GT; GT_HR];
 
 
 
 
 %% calculate ErrorMean, ErrorSD, RMSE, R
 
-Error_PSD = HR_PSD - HR_GT;
-MAE = abs(Error_PSD)
+% Error_PSD = HR_PSD - HR_GT;
+% MAE = abs(Error_PSD)
 
 
-
+[HR_PSD; HR2]
     
 
 
-
+[HR_GT; GT_HR]
