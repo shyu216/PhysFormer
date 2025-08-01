@@ -14,9 +14,6 @@ import math
 
 
 
-clip_frames = 160 #+60   
-
-
 class Normaliztion (object):
     """
         same as mxnet, normalize into [-1, 1]
@@ -54,11 +51,12 @@ class ToTensor (object):
 
 class VIPL (Dataset):
 
-    def __init__(self, info_list, root_dir, transform=None):
+    def __init__(self, info_list, root_dir, transform=None, clip_frames=60):
 
         self.landmarks_frame = pd.read_csv(info_list, delimiter=' ', header=None)
         self.root_dir = root_dir
         self.transform = transform
+        self.clip_frames = clip_frames
 
     def __len__(self):
         return len(self.landmarks_frame)
@@ -86,11 +84,11 @@ class VIPL (Dataset):
     def get_single_video_x(self, video_path, total_clips):
         video_jpgs_path = video_path
 
-        video_x = np.zeros((total_clips, clip_frames, 128, 128, 3))
+        video_x = np.zeros((total_clips, self.clip_frames, 128, 128, 3))
         
         for tt in range(total_clips):
-            image_id = tt*160 + 1 #61
-            for i in range(clip_frames):
+            image_id = tt*self.clip_frames
+            for i in range(self.clip_frames):
                 s = "%05d" % image_id
                 # image_name = 'image_' + s + '.png'
                 image_name = 'frame_' + s + '.png'

@@ -4,3 +4,7 @@ image_?????.png
 
 # 忽略所有 .pyc 文件
 *.pyc
+
+my_infer*/
+2025*/
+downloaded_video.mp4_person_0/

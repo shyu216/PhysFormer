@@ -80,12 +80,14 @@ def train_test():
 
     dict_list = []
     dict_list.append('Physformer_VIPL_fold1.pkl')
+
+    clip_frames = args.clip_frames  # 每个视频片段的帧数
     
 
     print('evaluation~ forward!\n')
     
     
-    model = ViT_ST_ST_Compact3_TDC_gra_sharp(image_size=(160,128,128), patches=(4,4,4), dim=96, ff_dim=144, num_heads=4, num_layers=12, dropout_rate=0.1, theta=0.7)
+    model = ViT_ST_ST_Compact3_TDC_gra_sharp(image_size=(clip_frames,128,128), patches=(4,4,4), dim=96, ff_dim=144, num_heads=4, num_layers=12, dropout_rate=0.1, theta=0.7)
     
     gra_sharp = 2.0
     
@@ -96,7 +98,7 @@ def train_test():
     model.eval()
   
   
-    VIPL_testDL = VIPL(my_test, my_root, transform=transforms.Compose([Normaliztion(), ToTensor()]))
+    VIPL_testDL = VIPL(my_test, my_root, transform=transforms.Compose([Normaliztion(), ToTensor()]), clip_frames=clip_frames)
     dataloader_test = DataLoader(VIPL_testDL, batch_size=1, shuffle=False, num_workers=2)
   
     
@@ -124,11 +126,12 @@ def train_test():
                 print('Model device:', next(model.parameters()).device)
 
 
-                print('rPPG shape:', rPPG.shape, 'Score1 shape:', Score1.shape, 'Score2 shape:', Score2.shape, 'Score3 shape:', Score3.shape)
-                
                 end_time = time.time()
                 print('clip:', clip, 'time:', end_time - start_time)
-                rPPG = rPPG[0, 30:30+160]
+                # rPPG = rPPG[0, 30:30+160]
+                rPPG = rPPG[0, :clip_frames]
+                print('rPPG shape:', rPPG.shape, 'Score1 shape:', Score1.shape, 'Score2 shape:', Score2.shape, 'Score3 shape:', Score3.shape)
+                
                 
                 #HR_predicted = TorchLossComputer.cross_entropy_power_spectrum_forward_pred(rPPG, frame_rate)+40
                 #HR += HR_predicted
@@ -172,6 +175,8 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', type=int, default=10, help='total training epochs')
     parser.add_argument('--log', type=str, default="Inference_Physformer_TDC07_sharp2_hid96_head4_layer12_VIPL", help='log and save model name')
     parser.add_argument('--finetune', action='store_true', default=False, help='whether finetune other models')
+
+    parser.add_argument('--clip_frames', type=int, default=160, help='number of frames in each video clip')
 
     args = parser.parse_args()
     train_test()

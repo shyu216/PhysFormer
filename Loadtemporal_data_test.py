@@ -90,9 +90,12 @@ class VIPL (Dataset):
         
         for tt in range(total_clips):
             image_id = tt*160 + 61
+            print('tt:', tt, 'total_clips:', total_clips, 'image_id:', image_id, 'clip_frames:', clip_frames)
             for i in range(clip_frames):
                 s = "%05d" % image_id
                 image_name = 'image_' + s + '.png'
+
+                # print(f"Use image: {image_name}")
     
                 # face video 
                 image_path = os.path.join(video_jpgs_path, image_name)
@@ -109,6 +112,7 @@ class VIPL (Dataset):
                             
                 image_id += 1
    
+        print('video_x shape:', video_x.shape)
         return video_x
 
 

@@ -3,6 +3,14 @@ function [s2f] = bpfilter64(s2,fs)
 % fs = 15;
 minfq = 0.8*2/fs; %0.8
 maxfq = 3*2/fs;  %3
+
+if maxfq >= 1
+    fs = 15;
+    minfq = 0.8*2/fs; %0.8
+    maxfq = 3*2/fs;  %3
+    disp('maxfq 超出范围，设置 fs 为 15Hz');
+end
+
 % maxfq = 3*2/fs;
 fir1_len = round(length(s2)/10);
 bpfilter = fir1(fir1_len,[minfq maxfq]);

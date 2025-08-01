@@ -13,3 +13,7 @@ python inference_OneSample_VIPL_PhysFormer_shy.py --input_data "C:\Users\LMAPA\D
 python inference_OneSample_VIPL_PhysFormer_shy.py --input_data "C:\Users\LMAPA\Documents\GitHub\Unity-Quest3-EVM\UDPServer\20250320_150946" --log "my_infer_log4"
 
 
+python inference_OneSample_VIPL_PhysFormer_shy.py --input_data "C:\Users\LMAPA\Documents\GitHub\Unity-Quest3-EVM\UDPServer\20250320_151150\person_0" --log "my_infer_log_60"
+
+
+python inference_OneSample_VIPL_PhysFormer_shy.py --input_data "C:\Users\LMAPA\Documents\GitHub\Unity-Quest3-EVM\UDPServer\20250320_151150\person_0" --log "my_infer_log_60" --clip_frames "60"

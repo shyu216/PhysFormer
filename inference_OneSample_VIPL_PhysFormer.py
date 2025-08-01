@@ -111,6 +111,8 @@ def train_test():
                 #HR += HR_predicted
                 
                 rPPG_long = torch.cat((rPPG_long, rPPG),dim=0)
+
+                print('sample number:', i+1, 'clip:', clip+1, 'rPPG shape:', rPPG.shape, 'rPPG_long shape:', rPPG_long.shape)
             
             #HR = HR/inputs.shape[1]
     
@@ -124,6 +126,8 @@ def train_test():
             ## save the results as .mat 
             results_rPPG.append(rPPG_long[1:].cpu().data.numpy())
             #results_HR_pred.append([HR.cpu().data.numpy(), clip_average_HR[0].cpu().data.numpy()])
+
+            print('sample number:', i+1, 'rPPG shape:', rPPG_long[1:].shape, 'results_rPPG shape:', np.array(results_rPPG).shape)
   
     
     # visual and save 

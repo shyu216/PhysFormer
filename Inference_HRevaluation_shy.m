@@ -1,153 +1,119 @@
 clear
 clc
 
+function batch_infer_and_save(folder_list)
+% 批量处理 rPPG/HR 推理结果并保存分析图片
+for i = 1:length(folder_list)
+    folder = folder_list{i};
+    try
+        mat_file = fullfile(folder, [folder, '.mat']);
+        gt_file = fullfile(folder, 'gt.txt');
+        if ~isfile(mat_file) || ~isfile(gt_file)
+            fprintf('跳过 %s，缺少数据文件\n', folder);
+            continue;
+        end
 
-my_log = "my_infer_log4";
-my_list = { ...
-    '20250319_112130', ...
-    '20250320_150946', ...
-    '20250320_151150', ...
-    '20250729_145011', ...
-    '20250729_145848', ...
-    '20250729_145919', ...
-    '20250730_095548', ...
-    'Inference_Physformer_TDC07_sharp2_hid96_head4_layer12_VIPL', ...
-    'my_infer_log', ...
-    'my_infer_log2', ...
-    'my_infer_log3', ...
-    'my_infer_log4' ...
-};
-my_log = my_list{7};
+        load(mat_file); % 加载 outputs_rPPG_concat
+        GT_list = importdata(gt_file);
+        signal = double(outputs_rPPG_concat);
+        framerate = GT_list.data(1,2);
 
-load (my_log + "/" + my_log + ".mat") 
+        signal_filtered = bpfilter64(signal, framerate);
+        signal_filtered = (signal_filtered-mean(signal_filtered))/std(signal_filtered);
 
-gt_path = my_log + "/gt.txt";
-GT_list = importdata(gt_path);
+        % HR 计算（略，参考原脚本）
 
-total_samples = length(outputs_rPPG_concat);
+        % 创建保存目录
+        save_dir = fullfile(folder, 'results');
+        if ~exist(save_dir, 'dir')
+            mkdir(save_dir);
+        end
 
-HR_peaks = [];
-HR_PSD = [];
-% HR_GT = [];
+        % 可视化并保存 rPPG 信号
+        fig1 = figure('Visible', 'off');
+        subplot(2,1,1);
+        plot(signal, 'b'); hold on;
+        plot(signal_filtered, 'r');
+        legend('Raw rPPG', 'Filtered rPPG');
+        title('rPPG Signal (Raw & Filtered)');
+        xlabel('Frame'); ylabel('Amplitude');
+        % PSD
+        [Pg_all, f_all] = pwelch(signal_filtered,[],[],2^13,framerate);
+        subplot(2,1,2);
+        plot(f_all, Pg_all);
+        xlim([0 5]);
+        title('Power Spectral Density of rPPG');
+        xlabel('Frequency (Hz)'); ylabel('PSD');
+        hold on;
+        [~, idx_max] = max(Pg_all(f_all>0.7 & f_all<4));
+        f_range = f_all(f_all>0.7 & f_all<4);
+        if ~isempty(f_range)
+            hr_pred = f_range(idx_max) * 60;
+            xline(hr_pred/60, 'r--', ['Pred HR: ' num2str(hr_pred, '%.1f') ' bpm']);
+        end
+        saveas(fig1, fullfile(save_dir, 'rPPG_PSD.png'));
+        close(fig1);
 
-signal =  double(outputs_rPPG_concat);
+        % 分段可视化并保存
+        signal_length = length(signal_filtered);
+        seg_len = floor(signal_length/3);
+        fig2 = figure('Visible', 'off');
+        for seg = 1:3
+            if seg == 1
+                idx = 1:seg_len;
+            elseif seg == 2
+                idx = seg_len+1:2*seg_len;
+            else
+                idx = 2*seg_len+1:signal_length;
+            end
+            subplot(3,2,2*seg-1);
+            plot(signal(idx), 'b'); hold on;
+            plot(signal_filtered(idx), 'r');
+            legend('Raw rPPG', 'Filtered rPPG');
+            title(['Segment ' num2str(seg) ' rPPG']);
+            xlabel('Frame'); ylabel('Amplitude');
+            [Pg_seg, f_seg] = pwelch(signal_filtered(idx),[],[],2^13,framerate);
+            subplot(3,2,2*seg);
+            plot(f_seg, Pg_seg);
+            xlim([0 5]);
+            title(['Segment ' num2str(seg) ' PSD']);
+            xlabel('Frequency (Hz)'); ylabel('PSD');
+            hold on;
+            [~, idx_max] = max(Pg_seg(f_seg>0.7 & f_seg<4));
+            f_range = f_seg(f_seg>0.7 & f_seg<4);
+            if ~isempty(f_range)
+                hr_pred = f_range(idx_max) * 60;
+                xline(hr_pred/60, 'r--', ['Pred HR: ' num2str(hr_pred, '%.1f') ' bpm']);
+            end
+        end
+        saveas(fig2, fullfile(save_dir, 'rPPG_PSD_segments.png'));
+        close(fig2);
 
-framerate = GT_list.data(1,2);
-% GT_HR = GT_list.data(1,3);
-
-disp(framerate)
-disp(length(signal))
-
-%    signal_filtered = signal;
-signal_filtered = bpfilter64(signal, framerate);
-signal_filtered = (signal_filtered-mean(signal_filtered))/std(signal_filtered);
-
-
-   
-%% PSD for HR 
-%     % Single long clip
-%    [Pg,f] = pwelch(signal_filtered,[],[],2^13,framerate);
-%     Frange = find(f>0.7&f<3); % consider the frequency within [0.7Hz, 4Hz].
-%     idxG = Pg == max(Pg(Frange));
-%     HR2 = f(idxG)*60;
-
-%     % Separate into three clips
-signal_length = length(signal_filtered);
-[Pg,f] = pwelch(signal_filtered(1:floor(signal_length/3)),[],[],2^13,framerate);
-Frange = find(f>0.7&f<4); % consider the frequency within [0.7Hz, 4Hz].
-idxG = Pg == max(Pg(Frange));
-HR2_1 = f(idxG)*60;
-[Pg,f] = pwelch(signal_filtered(floor(signal_length/3):2*floor(signal_length/3)),[],[],2^13,framerate);
-Frange = find(f>0.7&f<4); % consider the frequency within [0.7Hz, 4Hz].
-idxG = Pg == max(Pg(Frange));
-HR2_2 = f(idxG)*60;
-[Pg,f] = pwelch(signal_filtered(2*floor(signal_length/3):signal_length),[],[],2^13,framerate);
-Frange = find(f>0.7&f<4); % consider the frequency within [0.7Hz, 4Hz].
-idxG = Pg == max(Pg(Frange));
-HR2_3 = f(idxG)*60;
-HR2 = (HR2_1+HR2_2+HR2_3)/3;
-
-% HR_peaks = [HR_peaks; HR1];
-HR_PSD = [HR_PSD; HR2];
-% HR_GT = [HR_GT; GT_HR];
-
-
-
-
-%% calculate ErrorMean, ErrorSD, RMSE, R
-
-% Error_PSD = HR_PSD - HR_GT;
-% MAE = abs(Error_PSD)
-
-
-% [HR_PSD; HR2]
-% [HR_GT; GT_HR]
-
-
-% 可视化 rPPG 信号
-figure;
-subplot(2,1,1);
-plot(signal, 'b'); hold on;
-plot(signal_filtered, 'r');
-legend('Raw rPPG', 'Filtered rPPG');
-title('rPPG Signal (Raw & Filtered)');
-xlabel('Frame');
-ylabel('Amplitude');
-
-% 可视化 PSD
-[Pg_all, f_all] =  pwelch(signal_filtered,[],[],2^13,framerate);
-subplot(2,1,2);
-plot(f_all, Pg_all);
-xlim([0 5]);
-title('Power Spectral Density of rPPG');
-xlabel('Frequency (Hz)');
-ylabel('PSD');
-hold on;
-[~, idx_max] = max(Pg_all(f_all>0.7 & f_all<4));
-f_range = f_all(f_all>0.7 & f_all<4);
-if ~isempty(f_range)
-    hr_pred = f_range(idx_max) * 60;
-    xline(hr_pred/60, 'r--', ['Pred HR: ' num2str(hr_pred, '%.1f') ' bpm']);
-end
-
-% 打印预测心率
-disp(['HR_PSD (3段均值): ' num2str(HR2, '%.2f') ' bpm']);
-% disp(['GT_HR: ' num2str(GT_HR, '%.2f') ' bpm']);
-
-signal_length = length(signal_filtered);
-seg_len = floor(signal_length/3);
-
-figure;
-for seg = 1:3
-    if seg == 1
-        idx = 1:seg_len;
-    elseif seg == 2
-        idx = seg_len+1:2*seg_len;
-    else
-        idx = 2*seg_len+1:signal_length;
+        fprintf('已处理并保存: %s\n', folder);
+    catch ME
+        fprintf('处理过程中出错: %s\n', ME.message);
+        for k = 1:length(ME.stack)
+            fprintf('> %s (第%d行)\n', ME.stack(k).file, ME.stack(k).line);
+        end
     end
-    % 可视化 rPPG 信号
-    subplot(3,2,2*seg-1);
-    plot(signal(idx), 'b'); hold on;
-    plot(signal_filtered(idx), 'r');
-    legend('Raw rPPG', 'Filtered rPPG');
-    title(['Segment ' num2str(seg) ' rPPG']);
-    xlabel('Frame');
-    ylabel('Amplitude');
-
-    % 可视化 PSD
-    [Pg_seg, f_seg] = pwelch(signal_filtered(idx),[],[],2^13,framerate);
-    subplot(3,2,2*seg);
-    plot(f_seg, Pg_seg);
-    xlim([0 5]);
-    title(['Segment ' num2str(seg) ' PSD']);
-    xlabel('Frequency (Hz)');
-    ylabel('PSD');
-    hold on;
-    [~, idx_max] = max(Pg_seg(f_seg>0.7 & f_seg<4));
-    f_range = f_seg(f_seg>0.7 & f_seg<4);
-    if ~isempty(f_range)
-        hr_pred = f_range(idx_max) * 60;
-        xline(hr_pred/60, 'r--', ['Pred HR: ' num2str(hr_pred, '%.1f') ' bpm']);
     end
 end
+
+
+
+% 自动收集所有 *_person_0 文件夹
+folders = dir;
+folder_list = {};
+for i = 1:length(folders)
+    if folders(i).isdir && (endsWith(folders(i).name, '_person_0') || startsWith(folders(i).name, '2025') || startsWith(folders(i).name, 'my_infer'))
+        folder_list{end+1} = folders(i).name;
+    end
+end
+
+% folder_list = {
+%     % 'downloaded_video.mp4_person_0'
+%     % 'my_infer_log_60'
+%     'Inference_Physformer_TDC07_sharp2_hid96_head4_layer12_VIPL'
+% };
+
+batch_infer_and_save(folder_list);
